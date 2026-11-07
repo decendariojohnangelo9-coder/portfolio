@@ -28,10 +28,14 @@ return [
 
     // ---- Contact form mail settings (secrets come from env / config.local.php) ----
     'mail' => [
+        // On Railway (no SMTP on Free/Hobby plans) the form sends through Resend's HTTPS API.
+        'resend_key'  => $env('RESEND_API_KEY'),
+        'resend_from' => $env('MAIL_FROM', 'Portfolio Contact <onboarding@resend.dev>'),
+        // On XAMPP the form falls back to Gmail SMTP (used only when RESEND_API_KEY is empty).
         'host' => $env('SMTP_HOST', 'smtp.gmail.com'),
         'port' => (int) $env('SMTP_PORT', '587'),
         'user' => $env('SMTP_USER'),   // the Gmail address that sends the message
         'pass' => $env('SMTP_PASS'),   // Gmail App Password (NOT your normal password)
-        'to'   => $env('MAIL_TO'),     // where messages are delivered (can be the same Gmail)
+        'to'   => $env('MAIL_TO'),     // where messages are delivered (with Resend: the email you signed up with)
     ],
 ];

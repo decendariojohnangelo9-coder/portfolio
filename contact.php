@@ -42,10 +42,43 @@ if (
 }
 
 // If the email settings are missing, report an error instead of pretending it was sent.
-if ($mail['user'] === '' || $mail['pass'] === '' || $mail['to'] === '') {
-    error_log('Contact form: SMTP_USER, SMTP_PASS or MAIL_TO is not set.');
+$useResend = $mail['resend_key'] !== '';
+if ($mail['to'] === '' || (!$useResend && ($mail['user'] === '' || $mail['pass'] === ''))) {
+    error_log('Contact form: set RESEND_API_KEY + MAIL_TO (Railway) or SMTP_USER + SMTP_PASS + MAIL_TO (XAMPP).');
     back('error');
 }
+
+$subject = 'Portfolio message from ' . $name;
+$body    = "Name: $name\nEmail: $email\n\nMessage:\n$message";
+
+// ---- Railway: send through Resend's HTTPS API (works without SMTP) ----
+if ($useResend) {
+    $payload = json_encode([
+        'from'     => $mail['resend_from'],
+        'to'       => [$mail['to']],
+        'reply_to' => $email,
+        'subject'  => $subject,
+        'text'     => $body,
+    ]);
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $mail['resend_key'], 'Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+    $response = curl_exec($ch);
+    $code     = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($response === false || $code < 200 || $code >= 300) {
+        error_log('Contact form Resend error (' . $code . '): ' . $response);
+        back('error');
+    }
+    back('sent');
+}
+
+// ---- XAMPP: send through Gmail SMTP with PHPMailer ----
 
 try {
     $m = new PHPMailer(true);   // true = throw exceptions on failure
@@ -63,8 +96,8 @@ try {
     $m->addAddress($mail['to']);
     $m->addReplyTo($email, $name);   // pressing Reply answers the visitor
 
-    $m->Subject = 'Portfolio message from ' . $name;
-    $m->Body    = "Name: $name\nEmail: $email\n\nMessage:\n$message";
+    $m->Subject = $subject;
+    $m->Body    = $body;
     $m->send();
 
     back('sent');
