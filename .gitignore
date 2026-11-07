@@ -1,0 +1,11 @@
+# Secrets and local settings (never push these)
+includes/config.local.php
+.env
+
+# Old local message log (no longer used)
+data/messages.txt
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
